@@ -313,6 +313,13 @@ PeleLM::WritePlotFile()
   }
 #endif
 
+#ifdef PELE_USE_ATF  
+    // include flame sensor, thickening factor, and efficiency function in Header of plot file 
+    plt_VarsName.push_back("flame_sensor");
+    plt_VarsName.push_back("thickening_factor");
+    plt_VarsName.push_back("efficiency_function");
+#endif
+
   // External source terms
   if (m_plot_extSource) {
     for (int ivar = 0; ivar < NVAR; ++ivar) {
@@ -491,17 +498,15 @@ PeleLM::WritePlotFile()
     cnt += NUM_ODE;
 #endif
 
-#ifdef PELE_USE_ATF  // include flame sensor, thickening factor, and efficiency function in plot file
-    plt_VarsName.push_back("flame_sensor");
+#ifdef PELE_USE_ATF
+    // include flame sensor, thickening factor, and efficiency function in plot file
     amrex::MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->flame_sensors, 0, cnt, 1, 0);
     cnt += 1;
 
     amrex::MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->thickening_factors, 0, cnt, 1, 0);
-    plt_VarsName.push_back("thickening_factor");
     cnt += 1;
 
     amrex::MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->efficiency_functions, 0, cnt, 1, 0);
-    plt_VarsName.push_back("efficiency_function");
     cnt += 1;
 #endif
 
