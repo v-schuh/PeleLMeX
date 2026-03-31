@@ -165,6 +165,15 @@ PeleLM::WritePlotFile()
   }
 #endif
 
+#ifdef PELE_USE_ATF  // increase number of components in the plot
+  // flame_sensor
+  ncomp +=1;
+  // thickening_factor
+  ncomp += 1;
+  // efficiency_function
+  ncomp += 1;
+#endif
+
   if (m_do_les && m_plot_les) {
     // Compute turbulent viscosity from current flow field at AmrNewTime
     calcTurbViscosity(AmrNewTime);
@@ -480,6 +489,20 @@ PeleLM::WritePlotFile()
     amrex::MultiFab::Copy(
       mf_plt[lev], m_leveldata_new[lev]->state, FIRSTODE, cnt, NUM_ODE, 0);
     cnt += NUM_ODE;
+#endif
+
+#ifdef PELE_USE_ATF  // include flame sensor, thickening factor, and efficiency function in plot file
+    plt_VarsName.push_back("flame_sensor");
+    amrex::MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->flame_sensors, 0, cnt, 1, 0);
+    cnt += 1;
+
+    amrex::MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->thickening_factors, 0, cnt, 1, 0);
+    plt_VarsName.push_back("thickening_factor");
+    cnt += 1;
+
+    amrex::MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->efficiency_functions, 0, cnt, 1, 0);
+    plt_VarsName.push_back("efficiency_function");
+    cnt += 1;
 #endif
 
     if (m_plot_extSource) {

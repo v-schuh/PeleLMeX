@@ -17,6 +17,29 @@ PeleLM::LevelData::LevelData(
   } else {
     state.define(ba, dm, NVAR, a_nGrowState, amrex::MFInfo(), factory);
   }
+
+  #ifdef PELE_USE_ATF  // initilaize level data for flame sensors, thickening factors, and efficiency functions
+  amrex::ParmParse pp("atf");
+    amrex::Real max_thickening_factor;
+    
+    bool max_thickening_defined = pp.query("max_thickening_factor", max_thickening_factor);
+
+    if(!max_thickening_defined){
+      amrex::Abort("max_thickening_factor not defined in input script. Either define a value or deactivate USE_ATF in GNUmakefile");
+    }
+    // allocate memory for thickening factors
+    thickening_factors.define(ba, dm, 1, 1, amrex::MFInfo(), factory);
+    thickening_factors.setVal(1); // initialize with 1
+
+    // allocate memory for efficiency functions
+    efficiency_functions.define(ba, dm, 1, 1, amrex::MFInfo(), factory);
+    efficiency_functions.setVal(1); //initialize with 1
+
+    // allocate memory for flame sensors
+    flame_sensors.define(ba, dm, 1, 1, amrex::MFInfo(), factory);
+    flame_sensors.setVal(0);
+  #endif
+
   gp.define(ba, dm, AMREX_SPACEDIM, 0, amrex::MFInfo(), factory);
   press.define(
     amrex::convert(ba, amrex::IntVect::TheNodeVector()), dm, 1, 1,

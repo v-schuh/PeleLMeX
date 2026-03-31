@@ -101,6 +101,30 @@ PeleLM::Evolve()
       }
     }
     nans_in_solution = checkForNaNs();
+#ifdef PELE_USE_ATF  // update values of flame sensors, thickening factors, and efficiency functions
+    for (int lev = 0; lev <= finest_level; ++lev){
+      auto* ldata_p = getLevelDataPtr(lev, AmrNewTime);
+      amrex::MultiFab& flame_sensors_lev = ldata_p->flame_sensors;
+      amrex::MultiFab& thickening_factors_lev = ldata_p->thickening_factors;
+      amrex::MultiFab& efficiency_functions_lev = ldata_p->efficiency_functions;
+
+      std::unique_ptr<amrex::MultiFab> mfPV = derive("progress_variable", m_cur_time, lev, 0);
+
+      for (amrex::MFIter mfi(*mfPV); mfi.isValid(); ++mfi){
+        const amrex::Box& bx = mfi.validbox();
+        const amrex::Array4<const amrex::Real> PV = mfPV->array(mfi);
+	amrex::Array4<amrex::Real> flame_sensors = flame_sensors_lev.array(mfi);
+        amrex::Array4<amrex::Real> thickening_factors = thickening_factors_lev.array(mfi);
+        amrex::Array4<amrex::Real> efficiency_functions = efficiency_functions_lev.array(mfi);
+        
+        atf_model->computeFlameSensors(bx, PV, flame_sensors);
+        atf_model->computeThickeningFactors(bx, flame_sensors, thickening_factors);
+        atf_model->computeEfficiencyFunctions(bx, thickening_factors, efficiency_functions);
+      }
+    }
+#endif
+
+
     do_not_evolve =
       ((m_max_step >= 0 && m_nstep >= m_max_step) ||
        (m_stop_time >= 0.0 && m_cur_time >= m_stop_time - 1.0e-12 * m_dt) ||

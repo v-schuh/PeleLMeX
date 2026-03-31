@@ -28,7 +28,12 @@ getTransportCoeff(
     pele::physics::PhysicsType::eos_type,
     pele::physics::PhysicsType::transport_type> const* trans_parm,
   pele::physics::eos::EosParm<pele::physics::PhysicsType::eos_type> const*
-    eosparm) noexcept
+    eosparm
+#ifdef PELE_USE_ATF  
+  ,amrex::Real thickening_factor = 1.0,
+  amrex::Real efficiency_function = 1.0
+#endif
+  ) noexcept
 {
   auto eos = pele::physics::PhysicsType::eos(eosparm);
   amrex::Real mwtinv[NUM_SPECIES] = {0.0};
@@ -64,7 +69,11 @@ getTransportCoeff(
   auto trans = pele::physics::PhysicsType::transport();
   trans.transport(
     get_xi, get_mu, get_lam, get_Ddiag, get_chi, Tloc, rho_cgs, y, rhoDi_cgs,
-    chi_loc, mu_cgs, dummy_xi, lambda_cgs, trans_parm);
+    chi_loc, mu_cgs, dummy_xi, lambda_cgs, trans_parm
+#ifdef PELE_USE_ATF
+    , thickening_factor, efficiency_function
+#endif    
+    );
 
   // Do CGS -> MKS conversions
   mu(i, j, k) = c2m::Mu(mu_cgs);
@@ -137,7 +146,12 @@ getTransportCoeff<pele::physics::eos::Manifold>(
     pele::physics::PhysicsType::eos_type,
     pele::physics::PhysicsType::transport_type> const* trans_parm,
   const pele::physics::eos::EosParm<pele::physics::PhysicsType::eos_type>*
-    eosparm) noexcept
+    eosparm
+#ifdef PELE_USE_ATF
+  , amrex::Real thickening_factor,
+  amrex::Real efficiency_function
+#endif
+  ) noexcept
 {
   // No Soret with manifold moels
   AMREX_ASSERT(!do_soret);
@@ -168,7 +182,11 @@ getTransportCoeff<pele::physics::eos::Manifold>(
   auto trans = pele::physics::PhysicsType::transport();
   trans.transport(
     get_xi, get_mu, get_lam, get_Ddiag, get_chi, Tloc, rho_cgs, y, rhoDi_cgs,
-    dummy_chi, mu_cgs, dummy_xi, lambda_cgs, trans_parm);
+    dummy_chi, mu_cgs, dummy_xi, lambda_cgs, trans_parm
+#ifdef PELE_USE_ATF
+    , thickening_factor, efficiency_function
+#endif
+    );
 
   // Do CGS -> MKS conversions
   for (int n = 0; n < NUM_SPECIES; ++n) {
@@ -214,9 +232,18 @@ getVelViscosity(
   constexpr bool get_Ddiag = false;
   constexpr bool get_chi = false;
   auto trans = pele::physics::PhysicsType::transport();
+
+#ifdef PELE_USE_ATF
+  amrex::Real thickening_factor = 1.0; // need to implement here?
+  amrex::Real efficiency_function = 1.0; // need to implement here?
+#endif
   trans.transport(
     get_xi, get_mu, get_lam, get_Ddiag, get_chi, temp, rho_cgs, y, dummy_rhoDi,
-    dummy_chi, mu_cgs, dummy_xi, dummy_lambda, trans_parm);
+    dummy_chi, mu_cgs, dummy_xi, dummy_lambda, trans_parm
+#ifdef PELE_USE_ATF
+    , thickening_factor, efficiency_function
+#endif    
+    );
 
   // Do CGS -> MKS conversions
   mu(i, j, k) = c2m::Mu(mu_cgs);
@@ -998,7 +1025,12 @@ reactionRateRhoY(
   amrex::Array4<const amrex::Real> const& T,
   amrex::Array4<amrex::Real> const& rhoYdot,
   pele::physics::eos::EosParm<pele::physics::PhysicsType::eos_type> const*
-    eosparm) noexcept
+    eosparm
+#ifdef PELE_USE_ATF
+  ,amrex::Array4<const amrex::Real> const& thickening_factors,
+  amrex::Array4<const amrex::Real> const& efficiency_functions
+#endif  
+  ) noexcept
 {
   auto eos = pele::physics::PhysicsType::eos(eosparm);
 
@@ -1015,7 +1047,17 @@ reactionRateRhoY(
   // Get wdot.
   const amrex::Real rho_cgs = m2c::Rho(rho); // rho MKS -> CGS
   amrex::Real wdot[NUM_SPECIES] = {0.0};
-  eos.RTY2WDOT(rho_cgs, Tloc, y, wdot);
+
+#ifdef PELE_USE_ATF
+  amrex::Real thickening_factor = thickening_factors(i, j, k);
+  amrex::Real efficiency_function = efficiency_functions(i, j, k);
+#endif
+
+  eos.RTY2WDOT(rho_cgs, Tloc, y, wdot
+#ifdef PELE_USE_ATF
+  , thickening_factor, efficiency_function
+#endif
+  );
   for (int n = 0; n < NUM_SPECIES; ++n) {
     rhoYdot(i, j, k, n) = wdot[n] * 1000.0; // CGS -> MKS conversion
   }

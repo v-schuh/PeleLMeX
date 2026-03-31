@@ -65,6 +65,20 @@ PeleLM::Setup()
   soot_model = new SootModel{};
 #endif
 
+#ifdef PELE_USE_ATF
+  amrex::ParmParse pp("atf");
+  amrex::Real max_thickening_factor = 1.0;
+  pp.query("max_thickening_factor", max_thickening_factor);
+  
+  bool do_efficiency_function = false;
+  bool do_flame_sensor = false;
+  
+  pp.query("do_efficiency_function",do_efficiency_function);
+  pp.query("do_flame_sensor",do_flame_sensor);
+  
+  atf_model = new ATFModel(max_thickening_factor, do_flame_sensor, do_efficiency_function);
+#endif
+
   // Read PeleLMeX parameters
   readParameters();
 

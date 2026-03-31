@@ -69,6 +69,10 @@ ifeq ($(USE_SOOT), TRUE)
    DEFINES += -DNUM_SOOT_MOMENTS=$(NUM_SOOT_MOMENTS)
 endif
 
+ifeq ($(USE_ATF), TRUE)
+   DEFINES += -DPELE_USE_ATF
+endif
+
 ifeq ($(USE_RADIATION), TRUE)
    DEFINES += -DPELE_USE_RADIATION
 endif
@@ -143,7 +147,7 @@ PPdirs := Source/Utility/PMF Source/Utility/TurbInflow Source/Utility/PltFileMan
 PPdirs += Source/Utility/Diagnostics Source/Utility/BlackBoxFunction
 PPdirs += Source/Utility/TurbForcing
 PPdirs += Source/Utility/Utilities
-PPdirs += Source Source/Reactions Source/Eos Source/Transport
+PPdirs += Source Source/Reactions Source/Eos Source/Transport Source/ATFModel
 
 ifeq ($(USE_CUSTOM_CHEMISTRY), TRUE)
   Bpack += $(Chemistry_Model)/Make.package

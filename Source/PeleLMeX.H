@@ -10,6 +10,7 @@
 #include "DiagBase.H"
 #include "PeleLMeX_FlowControllerData.H"
 #include "PeleLMeX_BPatch.H"
+#include "ATFModel.H"
 
 #ifdef PELE_USE_PLASMA
 #include "PrecondOp.H"
@@ -198,6 +199,11 @@ public:
       lambda_turb_fc;            // Turbulent thermal conductivity (dim:)
     amrex::MultiFab diff_cc;     // Diffusivity (dim:NUM_SPECIES+2)
     amrex::MultiFab diff_aux_cc; // Diffusivity of auxiliaries (dim:m_nAux)
+#ifdef PELE_USE_ATF
+    amrex::MultiFab thickening_factors; 	// array with thickening factors
+    amrex::MultiFab efficiency_functions;  	// array with efficiency functions
+    amrex::MultiFab flame_sensors;   		// array with flame sensors
+#endif
 #ifdef PELE_USE_PLASMA
     amrex::MultiFab diffE_cc; // Electron diffusivity (dim:1)
     amrex::MultiFab mobE_cc;  // Electron mobility (dim:1)
@@ -1878,6 +1884,11 @@ public:
   // Patch parameters
   BPatch* boundary_patches = nullptr;
   BPatch* boundary_patches_d = nullptr;
+
+#ifdef PELE_USE_ATF
+  // ATF model
+  ATFModel* atf_model = nullptr;
+#endif
 
 #ifdef PELE_USE_SOOT
   // Soot parameters

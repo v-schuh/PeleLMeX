@@ -279,6 +279,11 @@ PeleLM::calcDiffusivity(const TimeStamp a_time)
     // MultiArrays
     auto const& sma = ldata_p->state.const_arrays();
     auto const& dma = ldata_p->diff_cc.arrays();
+#ifdef PELE_USE_ATF
+    auto const& thickening_factors_mf = ldata_p->thickening_factors.const_arrays();
+    auto const& efficiency_functions_mf = ldata_p->efficiency_functions.const_arrays();
+#endif
+
 #ifdef PELE_USE_PLASMA
     auto const& kma = ldata_p->mob_cc.arrays();
 #endif
@@ -287,11 +292,19 @@ PeleLM::calcDiffusivity(const TimeStamp a_time)
       ldata_p->diff_cc, ldata_p->diff_cc.nGrowVect(),
       [sma, dma, soret_idx, ltransparm, do_fixed_Le, do_fixed_Pr, do_soret,
        Le_inv, Pr_inv, leosparm
+#if PELE_USE_ATF
+       ,
+       thickening_factors_mf, efficiency_functions_mf       
+#endif
 #if PELE_USE_PLASMA
        ,
        kma, mwt, zk = zk
 #endif
     ] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept {
+#ifdef PELE_USE_ATF
+        amrex::Real thickening_factor = thickening_factors_mf[box_no](i, j, k);  
+        amrex::Real efficiency_function = efficiency_functions_mf[box_no](i, j, k);      
+#endif
         getTransportCoeff<pele::physics::PhysicsType::eos_type>(
           i, j, k, do_fixed_Le, do_fixed_Pr, do_soret, Le_inv, Pr_inv,
           amrex::Array4<amrex::Real const>(sma[box_no], FIRSTSPEC),
@@ -300,7 +313,11 @@ PeleLM::calcDiffusivity(const TimeStamp a_time)
           amrex::Array4<amrex::Real>(dma[box_no], NUM_SPECIES + 1 + soret_idx),
           amrex::Array4<amrex::Real>(dma[box_no], NUM_SPECIES),
           amrex::Array4<amrex::Real>(dma[box_no], NUM_SPECIES + 1), ltransparm,
-          leosparm);
+          leosparm
+#ifdef PELE_USE_ATF          
+          , thickening_factor, efficiency_function
+#endif          
+          );
 #ifdef PELE_USE_PLASMA
         getKappaSp(
           i, j, k, mwt.arr, zk,
@@ -452,11 +469,34 @@ PeleLM::getDiffusivity(
           beta_ec[idim], ldata_p->visc_turb_fc[idim], 0, 0, 1, 0);
       } else if ((ncomp == NUM_SPECIES) and (beta_comp == 0)) { // Species
                                                                 // diffusivity
+#ifdef PELE_USE_ATF  // apply flame sensor to LES species diffusion 
+        for (int ispec = 0; ispec < NUM_SPECIES; ispec++) {
+        for (amrex::MFIter mfi(beta_ec[idim], amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+            const amrex::Box& bx = mfi.tilebox();
+
+	    amrex::Array4<amrex::Real> const& beta_arr = beta_ec[idim].array(mfi);
+            amrex::Array4<const amrex::Real> const& flame_sensor_arr = ldata_p->flame_sensors.const_array(mfi);
+            amrex::Array4<const amrex::Real> const& visc_turb_arr = ldata_p->visc_turb_fc[idim].const_array(mfi);
+
+	    const amrex::Real schmidt_inv = m_Schmidt_inv;
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+
+            beta_arr(i, j, k, ispec) += (1.0 - flame_sensor_arr(i, j, k)) * visc_turb_arr(i, j, k) * schmidt_inv;
+            
+            });
+        }
+    }
+
+#else
         for (int ispec = 0; ispec < NUM_SPECIES; ++ispec) {
           amrex::MultiFab::Saxpy(
             beta_ec[idim], m_Schmidt_inv, ldata_p->visc_turb_fc[idim], 0, ispec,
             1, 0);
         }
+#endif
+
+
       } else if ((ncomp == 1) and (beta_comp == NUM_SPECIES)) { // Thermal
                                                                 // conductivity
         amrex::MultiFab::Add(

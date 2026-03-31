@@ -63,6 +63,11 @@ PeleLM::advanceChemistry(
     auto const& extF_rhoH = a_extForcing.array(mfi, NUM_SPECIES);
     auto const& fcl = ldataR_p->functC.array(mfi);
     auto const& mask_arr = mask.array(mfi);
+    // try to access atf array remove
+    #ifdef PELE_USE_ATF
+    auto const& thickening_factors = ldataNew_p->thickening_factors.const_array(mfi);
+    auto const& efficiency_functions = ldataNew_p->efficiency_functions.const_array(mfi);
+    #endif
 
     // Reset new to old and convert MKS -> CGS
     amrex::ParallelFor(
@@ -107,6 +112,9 @@ PeleLM::advanceChemistry(
 #ifdef AMREX_USE_GPU
       ,
       amrex::Gpu::gpuStream()
+#endif
+#ifdef PELE_USE_ATF      
+      , &thickening_factors, &efficiency_functions // added thickening factor and efficiency function array
 #endif
     );
 
@@ -193,6 +201,10 @@ PeleLM::advanceChemistryBAChem(
   amrex::MultiFab chemForcing(
     *m_baChem[lev], *m_dmapChem[lev], nCompForcing(), 0);
   amrex::MultiFab functC(*m_baChem[lev], *m_dmapChem[lev], 1, 0);
+#ifdef PELE_USE_ATF  // make level data available for parallelization
+  amrex::MultiFab thickening_factors_chem(*m_baChem[lev], *m_dmapChem[lev], 1, 0); 
+  amrex::MultiFab efficiency_functions_chem(*m_baChem[lev], *m_dmapChem[lev], 1, 0); 
+#endif
 #ifdef PELE_USE_PLASMA
   amrex::MultiFab chemnE(*m_baChem[lev], *m_dmapChem[lev], 1, 0);
 #endif
@@ -208,6 +220,11 @@ PeleLM::advanceChemistryBAChem(
   // ParallelCopy into chem MFs
   chemState.ParallelCopy(ldataOld_p->state, FIRSTSPEC, 0, NUM_SPECIES + 3);
   chemForcing.ParallelCopy(a_extForcing, 0, 0, nCompForcing());
+#ifdef PELE_USE_ATF  // copy level data into MultiFab arrays
+  thickening_factors_chem.ParallelCopy(ldataNew_p->thickening_factors); 
+  efficiency_functions_chem.ParallelCopy(ldataNew_p->efficiency_functions);
+#endif
+
 #ifdef PELE_USE_PLASMA
   chemnE.ParallelCopy(ldataOld_p->state, NE, 0, 1);
 #endif
@@ -228,6 +245,10 @@ PeleLM::advanceChemistryBAChem(
     auto const& extF_rhoH = chemForcing.array(mfi, NUM_SPECIES);
     auto const& fcl = functC.array(mfi);
     auto const& mask_arr = mask.array(mfi);
+#ifdef PELE_USE_ATF  // access ParallelCopy 
+    auto const& thickening_factors = thickening_factors_chem.const_array(mfi); 
+    auto const& efficiency_functions = efficiency_functions_chem.const_array(mfi);
+#endif
 
     // Convert MKS -> CGS
     amrex::ParallelFor(
@@ -274,6 +295,9 @@ PeleLM::advanceChemistryBAChem(
 #ifdef AMREX_USE_GPU
         ,
         amrex::Gpu::gpuStream()
+#endif
+#ifdef PELE_USE_ATF
+        , &thickening_factors, &efficiency_functions
 #endif
       );
     } else {
@@ -401,6 +425,10 @@ PeleLM::computeInstantaneousReactionRate(
     auto const& rhoH = ldata_p->state.const_array(mfi, RHOH);
     auto const& T = ldata_p->state.const_array(mfi, TEMP);
     auto const& rhoYdot = a_I_R->array(mfi);
+#ifdef PELE_USE_ATF
+    auto const& thickening_factors = ldata_p -> thickening_factors.const_array(mfi);
+    auto const& efficiency_functions = ldata_p -> efficiency_functions.const_array(mfi);
+#endif
 
 #ifdef AMREX_USE_EB
     auto const& flagfab = ebfact.getMultiEBCellFlagFab()[mfi];
@@ -422,7 +450,11 @@ PeleLM::computeInstantaneousReactionRate(
               rhoYdot(i, j, k, n) = 0.0;
             }
           } else {
-            reactionRateRhoY(i, j, k, rhoY, rhoH, T, rhoYdot, leosparm);
+            reactionRateRhoY(i, j, k, rhoY, rhoH, T, rhoYdot, leosparm
+#ifdef PELE_USE_ATF
+            , thickening_factors, efficiency_functions
+#endif
+            );
           }
         });
     } else
@@ -430,8 +462,16 @@ PeleLM::computeInstantaneousReactionRate(
     {
       amrex::ParallelFor(
         bx, [rhoY, rhoH, T, rhoYdot,
-             leosparm] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-          reactionRateRhoY(i, j, k, rhoY, rhoH, T, rhoYdot, leosparm);
+             leosparm 
+#ifdef PELE_USE_ATF
+             ,thickening_factors, efficiency_functions
+#endif
+             ] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+          reactionRateRhoY(i, j, k, rhoY, rhoH, T, rhoYdot, leosparm
+#ifdef PELE_USE_ATF
+          , thickening_factors, efficiency_functions
+#endif
+          );
         });
     }
   }
