@@ -28,6 +28,9 @@ THREAD_SANITIZER = FALSE
 # PeleLMeX
 USE_PLASMA = FALSE
 
+# Artificially thickened flame
+USE_ATF = TRUE
+
 # PelePhysics
 USE_MANIFOLD = FALSE
 ifeq ($(USE_MANIFOLD), TRUE)
