@@ -276,12 +276,16 @@ PeleLM::calcDiffusivity(const TimeStamp a_time)
 
     auto* ldata_p = getLevelDataPtr(lev, a_time);
 
+#ifdef PELE_USE_ATF
+    auto* ldataNew_p = getLevelDataPtr(lev, AmrNewTime);
+#endif
+
     // MultiArrays
     auto const& sma = ldata_p->state.const_arrays();
     auto const& dma = ldata_p->diff_cc.arrays();
 #ifdef PELE_USE_ATF
-    auto const& thickening_factors_mf = ldata_p->thickening_factors.const_arrays();
-    auto const& efficiency_functions_mf = ldata_p->efficiency_functions.const_arrays();
+    auto const& thickening_factors_mf = ldataNew_p->thickening_factors.const_arrays();
+    auto const& efficiency_functions_mf = ldataNew_p->efficiency_functions.const_arrays();
 #endif
 
 #ifdef PELE_USE_PLASMA
@@ -304,6 +308,12 @@ PeleLM::calcDiffusivity(const TimeStamp a_time)
 #ifdef PELE_USE_ATF
         amrex::Real thickening_factor = thickening_factors_mf[box_no](i, j, k);  
         amrex::Real efficiency_function = efficiency_functions_mf[box_no](i, j, k);      
+        if (box_no == 0 && i == 0 && j == 0 && k == 0) {
+            printf("box=%d i=%d j=%d k=%d TF=%g EF=%g\n",
+                  box_no, i, j, k,
+                  static_cast<double>(thickening_factor),
+                  static_cast<double>(efficiency_function));
+        }
 #endif
         getTransportCoeff<pele::physics::PhysicsType::eos_type>(
           i, j, k, do_fixed_Le, do_fixed_Pr, do_soret, Le_inv, Pr_inv,

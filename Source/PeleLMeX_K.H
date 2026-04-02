@@ -30,8 +30,8 @@ getTransportCoeff(
   pele::physics::eos::EosParm<pele::physics::PhysicsType::eos_type> const*
     eosparm
 #ifdef PELE_USE_ATF  
-  ,amrex::Real thickening_factor = 1.0,
-  amrex::Real efficiency_function = 1.0
+  ,amrex::Real thickening_factor,
+  amrex::Real efficiency_function
 #endif
   ) noexcept
 {
@@ -123,6 +123,16 @@ getTransportCoeff(
 #endif
     }
   }
+#ifdef PELE_USE_ATF
+  lambda(i, j, k) *= thickening_factor * efficiency_function;
+  rhoDi(i, j, k) *= thickening_factor * efficiency_function;
+  if (do_soret) {
+    rhotheta(i, j, k) *= thickening_factor * efficiency_function;
+  }
+  if (i == 0 & j == 0 & k == 0){
+    amrex::Print() << "PeleLMeX_K.H: getTransportCoeff() -> Having a thickening factor of: " << thickening_factor << ", " << efficiency_function << " \n";
+  }
+#endif
 }
 
 template <>
@@ -148,7 +158,8 @@ getTransportCoeff<pele::physics::eos::Manifold>(
   const pele::physics::eos::EosParm<pele::physics::PhysicsType::eos_type>*
     eosparm
 #ifdef PELE_USE_ATF
-  , amrex::Real thickening_factor,
+  ,
+  amrex::Real thickening_factor,
   amrex::Real efficiency_function
 #endif
   ) noexcept
@@ -208,7 +219,12 @@ getVelViscosity(
   amrex::Array4<amrex::Real> const& mu,
   pele::physics::transport::TransParm<
     pele::physics::PhysicsType::eos_type,
-    pele::physics::PhysicsType::transport_type> const* trans_parm) noexcept
+    pele::physics::PhysicsType::transport_type> const* trans_parm
+//#ifdef PELE_USE_ATF  
+//  ,amrex::Real thickening_factor,
+//  amrex::Real efficiency_function
+//#endif
+  ) noexcept
 {
   // Get rho & Y from rhoY
   amrex::Real massdens[NUM_SPECIES];
@@ -226,6 +242,9 @@ getVelViscosity(
   amrex::Real mu_cgs = 0.0;
   amrex::Real dummy_xi = 0.0;
 
+  amrex::Real thickening_factor = 1.0; // default values for viscosity
+  amrex::Real efficiency_function = 1.0; // default values for viscosity
+
   constexpr bool get_xi = false;
   constexpr bool get_mu = true;
   constexpr bool get_lam = false;
@@ -233,16 +252,12 @@ getVelViscosity(
   constexpr bool get_chi = false;
   auto trans = pele::physics::PhysicsType::transport();
 
-#ifdef PELE_USE_ATF
-  amrex::Real thickening_factor = 1.0; // need to implement here?
-  amrex::Real efficiency_function = 1.0; // need to implement here?
-#endif
   trans.transport(
     get_xi, get_mu, get_lam, get_Ddiag, get_chi, temp, rho_cgs, y, dummy_rhoDi,
-    dummy_chi, mu_cgs, dummy_xi, dummy_lambda, trans_parm
-#ifdef PELE_USE_ATF
-    , thickening_factor, efficiency_function
-#endif    
+    dummy_chi, mu_cgs, dummy_xi, dummy_lambda, trans_parm, thickening_factor, efficiency_function 
+//#ifdef PELE_USE_ATF
+//    , thickening_factor, efficiency_function
+//#endif    
     );
 
   // Do CGS -> MKS conversions

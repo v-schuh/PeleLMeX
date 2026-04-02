@@ -16,7 +16,16 @@
 #else
 #define NUMPLASMA 0
 #endif
+
+// #ifdef PELE_USE_ATF
+// #define THICKENING_FACTOR (RHORT + NUMPLASMA + 1)
+// #define NUMATF 3
+// #else
+// #define NUMATF 0
+// #endif
+
 #ifdef PELE_USE_SOOT
+//#define FIRSTSOOT (RHORT + NUMPLASMA + NUMATF + 1)
 #define FIRSTSOOT (RHORT + NUMPLASMA + 1)
 #define NUMSOOTVAR (NUM_SOOT_MOMENTS + 1)
 #else
@@ -25,9 +34,10 @@
 #ifndef NUM_ODE
 #define NUM_ODE 0
 #endif
+//#define FIRSTODE (RHORT + NUMPLASMA + NUMSOOTVAR + NUMATF + 1)
+//#define NVAR (RHORT + NUMPLASMA + NUMSOOTVAR + NUMATF + NUM_ODE + 1)
 #define FIRSTODE (RHORT + NUMPLASMA + NUMSOOTVAR + 1)
 #define NVAR (RHORT + NUMPLASMA + NUMSOOTVAR + NUM_ODE + 1)
-
 namespace pelelmex {
 enum BCTypeEB {
   wall_adiab = 0,

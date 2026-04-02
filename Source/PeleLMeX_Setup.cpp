@@ -994,6 +994,14 @@ PeleLM::variablesSetup()
     amrex::Print() << " PhiV: " << PHIV << "\n";
     stateComponents.emplace_back(PHIV, "PhiV");
 #endif
+// #ifdef PELE_USE_ATF
+//     amrex::Print() << " thickening factor: " << THICKENING_FACTOR << "\n";
+//     stateComponents.emplace_back(THICKENING_FACTOR, "thickening_factor");
+//     amrex::Print() << " flame sensor: " << THICKENING_FACTOR +1<< "\n";
+//     stateComponents.emplace_back(THICKENING_FACTOR +1, "flame_sensor");
+//     amrex::Print() << " efficiency function: " << THICKENING_FACTOR +2<< "\n";
+//     stateComponents.emplace_back(THICKENING_FACTOR +2, "efficiency_function");
+// #endif
 #ifdef PELE_USE_SOOT
     for (int mom = 0; mom < NUMSOOTVAR; ++mom) {
       std::string sootname = soot_model->sootVariableName(mom);
@@ -1080,6 +1088,14 @@ PeleLM::variablesSetup()
     m_AdvTypeState[PHIV] = 0;
     m_DiffTypeState[PHIV] = 0;
 #endif
+// #ifdef PELE_USE_ATF
+//     m_AdvTypeState[THICKENING_FACTOR] = 0;
+//     m_DiffTypeState[THICKENING_FACTOR] = 0;
+//     m_AdvTypeState[THICKENING_FACTOR+1] = 0;
+//     m_DiffTypeState[THICKENING_FACTOR+1] = 0;
+//     m_AdvTypeState[THICKENING_FACTOR+2] = 0;
+//     m_DiffTypeState[THICKENING_FACTOR+2] = 0;
+// #endif
 #ifdef PELE_USE_SOOT
     for (int mom = 0; mom < NUMSOOTVAR; ++mom) {
       m_AdvTypeState[FIRSTSOOT + mom] = 0;
